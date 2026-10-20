@@ -1,5 +1,9 @@
 # 🏃‍♂️ MyFit v1.1 — Professional Fitness Edition
 
+<p align="center">
+  <img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="120" alt="MyFit Logo"/>
+</p>
+
 Welcome to **MyFit**, a modern, lightweight, and battery-efficient Android fitness tracking application built with **Jetpack Compose** and **Material 3**. 
 
 MyFit is designed to help you effortlessly track your daily steps, monitor your walking history, and achieve your fitness goals with a gorgeous, highly customizable UI.
@@ -43,8 +47,7 @@ MyFit is designed to help you effortlessly track your daily steps, monitor your 
    git clone https://github.com/KAIRO407/MyFit.git
    ```
 2. Open the project in **Android Studio**.
-3. Connect an Android device or start an emulator (API 29+).
-4. Build and run the app or install the pre-built [`app-debug.apk`](app-debug.apk) directly from the repository root.
+3. Install the pre-built **[MYFit.apk](MYFit.apk)** directly on your Android device!
 
 ---
 
