@@ -15,21 +15,11 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-enum class ColorPreset(val primary: Color, val accent: Color, val label: String) {
-    CYAN_GLOW(Color(0xFF00E5FF), Color(0xFF7C4DFF), "Cyber Cyan"),
-    ELECTRIC_VIOLET(Color(0xFF9C27B0), Color(0xFFE040FB), "Electric Violet"),
-    SUNSET_ORANGE(Color(0xFFFF5722), Color(0xFFFF9800), "Sunset Orange"),
-    NEON_PINK(Color(0xFFFF007F), Color(0xFF7928CA), "Neon Pink"),
-    EMERALD_MINT(Color(0xFF00E676), Color(0xFF1DE9B6), "Emerald Mint"),
-    SOLAR_GOLD(Color(0xFFFFAB00), Color(0xFFFF3D00), "Solar Gold"),
-    MIDNIGHT_BLUE(Color(0xFF2979FF), Color(0xFF00B0FF), "Midnight Blue"),
-    CRIMSON_FIRE(Color(0xFFFF1744), Color(0xFFFF5252), "Crimson Fire")
-}
-
-enum class UiStyle(val label: String) {
-    GLASSY("Glassy (Neon Glow)"),
-    TRANSLUCENT("Translucent (Frosted)"),
-    OPAQUE("Opaque (Solid Dark)")
+enum class ColorPreset(val primary: Color, val darkPrimary: Color, val label: String) {
+    EMERALD_GREEN(Color(0xFF4CAF50), Color(0xFF2E7D32), "Emerald Green"),
+    OCEAN_BLUE(Color(0xFF2196F3), Color(0xFF1565C0), "Ocean Blue"),
+    SUNSET_ORANGE(Color(0xFFFF9800), Color(0xFFEF6C00), "Sunset Orange"),
+    ROYAL_PURPLE(Color(0xFF9C27B0), Color(0xFF6A1B9A), "Royal Purple")
 }
 
 data class Achievement(
@@ -48,14 +38,10 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var dailyGoal by mutableStateOf(prefs.getGoal())
         private set
-    var selectedCardAlpha by mutableStateOf(prefs.getTransparency())
-        private set
-    var selectedUiStyle by mutableStateOf(
-        try { UiStyle.valueOf(prefs.getUiStyle()) } catch (e: Exception) { UiStyle.TRANSLUCENT }
-    )
+    var notificationsEnabled by mutableStateOf(prefs.getNotificationsEnabled())
         private set
     var selectedTheme by mutableStateOf(
-        try { ColorPreset.valueOf(prefs.getTheme()) } catch (e: Exception) { ColorPreset.CYAN_GLOW }
+        try { ColorPreset.valueOf(prefs.getTheme()) } catch (e: Exception) { ColorPreset.EMERALD_GREEN }
     )
         private set
 
@@ -106,14 +92,9 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
         prefs.saveGoal(goal)
     }
 
-    fun updateTransparency(alpha: Float) {
-        selectedCardAlpha = alpha
-        prefs.saveTransparency(alpha)
-    }
-
-    fun updateUiStyle(style: UiStyle) {
-        selectedUiStyle = style
-        prefs.saveUiStyle(style.name)
+    fun updateNotifications(enabled: Boolean) {
+        notificationsEnabled = enabled
+        prefs.saveNotificationsEnabled(enabled)
     }
 
     fun refreshData() {
