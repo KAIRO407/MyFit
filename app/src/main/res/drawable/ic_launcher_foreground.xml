@@ -1,20 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Futuristic Geometric Step Pulse / Crystal Apex (Cyan #00E5FF & Purple #7B61FF) -->
-    <!-- Left upward chevron wing -->
+    <!-- Green shaded circle background -->
     <path
-        android:fillColor="#7B61FF"
-        android:pathData="M32,64 L54,36 L44,24 L16,60 Z" />
-    <!-- Right upward soaring apex / step shard -->
-    <path
-        android:fillColor="#00E5FF"
-        android:pathData="M54,36 L76,64 L92,44 L64,20 Z" />
-    <!-- Center connecting diamond / core node -->
-    <path
-        android:fillColor="#00FF94"
-        android:pathData="M54,48 L68,64 L54,84 L40,64 Z" />
+        android:fillColor="#00E676"
+        android:pathData="M54,6 A48,48 0,1,1 54,102 A48,48 0,1,1 54,6" />
+    <!-- Running figure facing left -->
+    <group android:scaleX="-1" android:translateX="108">
+        <!-- Head -->
+        <path android:fillColor="#FFFFFF" android:pathData="M54,30 A6,6 0,1,1 54,42 A6,6 0,1,1 54,30" />
+        <!-- Torso -->
+        <path android:fillColor="#FFFFFF" android:pathData="M52,44 L46,64 L56,68 L58,52 Z" />
+        <!-- Arms -->
+        <path android:fillColor="#FFFFFF" android:pathData="M52,46 L68,50 L66,55 L54,50 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M52,46 L38,56 L42,60 L50,48 Z" />
+        <!-- Legs -->
+        <path android:fillColor="#FFFFFF" android:pathData="M46,64 L34,76 L38,80 L48,70 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M56,68 L64,84 L60,88 L50,72 Z" />
+    </group>
 </vector>

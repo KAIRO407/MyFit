@@ -1,10 +1,12 @@
-# 👟 StepVerse (MyFit) v1.3
+# 🏃‍♂️ MyFit v1.1 — Professional Fitness Edition
 
 <p align="center">
-  <img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="120" alt="StepVerse Logo"/>
+  <img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="120" alt="MyFit Logo"/>
 </p>
 
-Welcome to **StepVerse** (MyFit) **v1.3**, a modern, minimalist, premium Android step-counting application built with **Jetpack Compose** and **Material 3**, inspired by Apple Fitness, Nothing OS, and Samsung Health.
+Welcome to **MyFit**, a modern, lightweight, and battery-efficient Android fitness tracking application built with **Jetpack Compose** and **Material 3**. 
+
+MyFit is designed to help you effortlessly track your daily steps, monitor your walking history, and achieve your fitness goals with a gorgeous, highly customizable UI.
 
 ---
 
@@ -16,17 +18,26 @@ Welcome to **StepVerse** (MyFit) **v1.3**, a modern, minimalist, premium Android
 
 ### 🛡️ 2. Smart Hybrid Step Engine (Zero Inflation)
 - **Hardware Priority**: Automatically prioritizes the hardware step counter sensor (`TYPE_STEP_COUNTER`) for absolute 1:1 physical step accuracy.
-- **Intelligent Accelerometer Fallback**: Strict mathematical cadence filtering guarantees zero step count inflation.
+- **Intelligent Accelerometer Fallback**: If the hardware step counter is silent (common on emulators and certain test devices), our smart hybrid accelerometer fallback algorithm takes over automatically.
+- **Mathematical Cadence Filtering**: Uses strict mathematical bounds (`deltaMag in 3.2f..8.0f` with a `400ms` refractory period) to prevent false positives from hand shakes, typing, or vibrations—guaranteeing 15 actual steps count as 15 steps (no artificial 500+ step inflation).
 
-### 🎨 3. App Customization & UI Styles
-- **Theme Palettes & UI Styles**: Personalize your app experience with custom color palettes, daily step goal adjustment, and translucency controls.
+### 🎨 3. Vibrant Themes & Custom UI Styles
+- **8 Vibrant Theme Palettes**: Choose from Cyber Cyan, Electric Violet, Sunset Orange, Neon Pink, Emerald Mint, Solar Gold, Midnight Blue, and Crimson Fire.
+- **3 Dynamic UI Styles**: Switch between **Glassy (Neon Glow)**, **Translucent (Frosted)**, and **Opaque (Solid Dark)**.
+- **Adjustable Translucency Intensity**: Fine-tune your card opacity slider to your personal preference.
+
+### 🏆 4. Interactive Dashboard & Milestones
+- **Swipeable Pager**: Seamlessly swipe between **Dashboard**, **Step History Logs**, and **Fitness Milestones**.
+- **Ergonomic Bottom-Left Vertical Controls**: Settings and Milestones buttons are stacked neatly on the bottom-left for effortless thumb reach.
+- **Goal Achievement Celebrations**: Receive celebratory trophy modal alerts the moment you crush your daily step target.
 
 ---
 
 ## 🛠️ Tech Stack & Architecture
-- **UI Framework**: Jetpack Compose & Material 3 (Clean Dark Theme).
-- **Architecture**: MVVM with Kotlin Coroutines and reactive `StateFlow`.
-- **Local Persistence**: Room Database for offline step storage.
+- **UI Framework**: Jetpack Compose & Material 3 (with custom dynamic gradients and glassmorphism styling).
+- **Architecture**: MVVM (Model-View-ViewModel) with Kotlin Coroutines and reactive `StateFlow`.
+- **Local Persistence**: Room Database for offline daily step storage and historical log retrieval.
+- **Background Processing**: Android Foreground Services (`health` type) with persistent notifications and WakeLocks.
 
 ---
 
@@ -36,7 +47,7 @@ Welcome to **StepVerse** (MyFit) **v1.3**, a modern, minimalist, premium Android
    git clone https://github.com/KAIRO407/MyFit.git
    ```
 2. Open the project in **Android Studio**.
-3. Install the pre-built **[MyFit.apk](MyFit.apk)** directly on your Android device!
+3. Install the pre-built **[MYFit.apk](MYFit.apk)** directly on your Android device!
 
 ---
 
