@@ -1,4 +1,4 @@
-# 🏃‍♂️ MyFit v1.1 — Professional Fitness Edition
+# 🏃‍♂️ MyFit
 
 <p align="center">
   <img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="120" alt="MyFit Logo"/>
