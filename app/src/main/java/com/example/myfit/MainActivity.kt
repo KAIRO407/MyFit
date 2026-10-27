@@ -22,7 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +32,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myfit.service.StepTrackingService
 import com.example.myfit.ui.MyFitViewModel
 import com.example.myfit.ui.RequestActivityPermission
+import com.example.myfit.ui.StepVersePreset
+import com.example.myfit.ui.UiStyle
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -63,7 +65,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.refreshData()
             }
 
-            StepVerseCleanApp(viewModel = viewModel)
+            StepVerseApp(viewModel = viewModel)
         }
     }
 
@@ -76,8 +78,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun StepVerseCleanApp(viewModel: MyFitViewModel) {
+fun StepVerseApp(viewModel: MyFitViewModel) {
     var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Stats, 2: Achievements, 3: Profile
+    var showSettings by remember { mutableStateOf(false) }
 
     val progress = if (viewModel.dailyGoal > 0) {
         (viewModel.currentSteps.toFloat() / viewModel.dailyGoal.toFloat()).coerceIn(0f, 1f)
@@ -99,7 +102,7 @@ fun StepVerseCleanApp(viewModel: MyFitViewModel) {
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // APP HEADER
+                // APP HEADER WITH SETTINGS GEAR
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -112,37 +115,49 @@ fun StepVerseCleanApp(viewModel: MyFitViewModel) {
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.3f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(text = "🔥", fontSize = 13.sp)
-                            Text(text = "${viewModel.currentStreak} Day Streak", color = Color(0xFF00E5FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(text = "🔥", fontSize = 13.sp)
+                                Text(text = "${viewModel.currentStreak} Day Streak", color = Color(0xFF00E5FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showSettings = !showSettings },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .border(1.dp, if (showSettings) Color(0xFF00E5FF) else Color(0xFF2A2A2A), RoundedCornerShape(10.dp))
+                        ) {
+                            Icon(
+                                imageVector = if (showSettings) Icons.Default.Close else Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = if (showSettings) Color(0xFF00E5FF) else Color(0xFFA0A0A0),
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 }
 
-                // TAB ROUTER
-                when (selectedTab) {
-                    0 -> {
-                        // HOME SCREEN
-                        HomeScreen(viewModel = viewModel, progress = progress)
-                    }
-                    1 -> {
-                        // STATISTICS PAGE
-                        StatsScreen(viewModel = viewModel)
-                    }
-                    2 -> {
-                        // ACHIEVEMENTS SECTION
-                        AchievementsScreen(viewModel = viewModel)
-                    }
-                    3 -> {
-                        // PROFILE PAGE
-                        ProfileScreen(viewModel = viewModel)
+                if (showSettings) {
+                    // RESTORED APP CUSTOMIZATION MENU
+                    CustomizationMenu(viewModel = viewModel)
+                } else {
+                    // TAB ROUTER
+                    when (selectedTab) {
+                        0 -> HomeScreen(viewModel = viewModel, progress = progress)
+                        1 -> StatsScreen(viewModel = viewModel)
+                        2 -> AchievementsScreen(viewModel = viewModel)
+                        3 -> ProfileScreen(viewModel = viewModel)
                     }
                 }
             }
@@ -153,8 +168,184 @@ fun StepVerseCleanApp(viewModel: MyFitViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                CleanBottomNav(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                if (!showSettings) {
+                    CleanBottomNav(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                }
                 Text(text = "StepVerse • by Sujal", color = Color(0xFF707070), fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+// RESTORED APP CUSTOMIZATION MENU
+@Composable
+fun CustomizationMenu(viewModel: MyFitViewModel) {
+    val theme = viewModel.selectedTheme
+    val uiStyle = viewModel.selectedUiStyle
+
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Text(text = "App Customization Settings", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = "Personalize your StepVerse experience.", color = Color(0xFFA0A0A0), fontSize = 12.sp)
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(text = "Theme Palette", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        StepVersePreset.entries.forEach { preset ->
+                            val isSelected = theme == preset
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(preset.primary)
+                                    .border(
+                                        2.dp,
+                                        if (isSelected) Color.White else Color.Transparent,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { viewModel.updateTheme(preset) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(text = "App UI Style", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        UiStyle.entries.forEach { style ->
+                            val isSelected = uiStyle == style
+                            Button(
+                                onClick = { viewModel.updateUiStyle(style) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) Color(0xFF00E5FF) else Color(0xFF2A2A2A)
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = style.name,
+                                    color = if (isSelected) Color.Black else Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Daily Step Goal", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "%,d steps".format(viewModel.dailyGoal), color = Color(0xFF00E5FF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Slider(
+                        value = viewModel.dailyGoal.toFloat(),
+                        onValueChange = { viewModel.updateGoal((it / 500).toInt() * 500) },
+                        valueRange = 2000f..30000f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFF00E5FF),
+                            activeTrackColor = Color(0xFF00E5FF),
+                            inactiveTrackColor = Color(0xFF2A2A2A)
+                        )
+                    )
+                }
+            }
+        }
+
+        if (uiStyle != UiStyle.OPAQUE) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "Translucency Intensity", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "${(viewModel.selectedCardAlpha * 100).toInt()}%", color = Color(0xFF00E5FF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Slider(
+                            value = viewModel.selectedCardAlpha,
+                            onValueChange = { viewModel.updateTransparency(it) },
+                            valueRange = 0.05f..0.45f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF00E5FF),
+                                activeTrackColor = Color(0xFF00E5FF),
+                                inactiveTrackColor = Color(0xFF2A2A2A)
+                            )
+                        )
+                    }
+                }
             }
         }
     }
@@ -168,7 +359,6 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            // Large Circular Step Counter Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
@@ -225,7 +415,6 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
         }
 
         item {
-            // Daily Progress Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
@@ -258,7 +447,6 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
         }
 
         item {
-            // Streak Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),

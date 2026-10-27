@@ -15,6 +15,19 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+enum class StepVersePreset(val primary: Color, val accent: Color, val label: String) {
+    CYAN_PULSE(Color(0xFF00E5FF), Color(0xFF7B61FF), "Cyan Pulse"),
+    VIBRANT_PURPLE(Color(0xFF7B61FF), Color(0xFF00E5FF), "Vibrant Purple"),
+    EMERALD_GLOW(Color(0xFF00FF94), Color(0xFF00E5FF), "Emerald Glow"),
+    SOLAR_GOLD(Color(0xFFFFD700), Color(0xFFFFB800), "Solar Gold")
+}
+
+enum class UiStyle(val label: String) {
+    GLASSY("Glassy (Neon Glow)"),
+    TRANSLUCENT("Translucent (Frosted)"),
+    OPAQUE("Opaque (Solid Dark)")
+}
+
 data class StepAchievement(
     val title: String,
     val description: String,
@@ -30,6 +43,17 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var dailyGoal by mutableStateOf(prefs.getGoal())
         private set
+    var selectedCardAlpha by mutableStateOf(prefs.getTransparency())
+        private set
+    var selectedUiStyle by mutableStateOf(
+        try { UiStyle.valueOf(prefs.getUiStyle()) } catch (e: Exception) { UiStyle.TRANSLUCENT }
+    )
+        private set
+    var selectedTheme by mutableStateOf(
+        try { StepVersePreset.valueOf(prefs.getTheme()) } catch (e: Exception) { StepVersePreset.CYAN_PULSE }
+    )
+        private set
+
     var currentStreak by mutableStateOf(7)
         private set
     var bestStreak by mutableStateOf(30)
@@ -72,16 +96,30 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
                 stepDao.getStepEntityFlowForDate(todayStr).collect { entity ->
                     if (entity != null) {
                         currentSteps = entity.steps
-                        lifetimeSteps += 1 // or accumulate properly
                     }
                 }
             } catch (_: Exception) {}
         }
     }
 
+    fun updateTheme(preset: StepVersePreset) {
+        selectedTheme = preset
+        prefs.saveTheme(preset.name)
+    }
+
     fun updateGoal(goal: Int) {
         dailyGoal = goal
         prefs.saveGoal(goal)
+    }
+
+    fun updateTransparency(alpha: Float) {
+        selectedCardAlpha = alpha
+        prefs.saveTransparency(alpha)
+    }
+
+    fun updateUiStyle(style: UiStyle) {
+        selectedUiStyle = style
+        prefs.saveUiStyle(style.name)
     }
 
     fun refreshData() {
