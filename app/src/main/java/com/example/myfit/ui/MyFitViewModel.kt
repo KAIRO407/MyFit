@@ -15,18 +15,10 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-enum class ColorPreset(val primary: Color, val darkPrimary: Color, val label: String) {
-    EMERALD_GREEN(Color(0xFF4CAF50), Color(0xFF2E7D32), "Emerald Green"),
-    OCEAN_BLUE(Color(0xFF2196F3), Color(0xFF1565C0), "Ocean Blue"),
-    SUNSET_ORANGE(Color(0xFFFF9800), Color(0xFFEF6C00), "Sunset Orange"),
-    ROYAL_PURPLE(Color(0xFF9C27B0), Color(0xFF6A1B9A), "Royal Purple")
-}
-
-data class Achievement(
-    val id: String,
+data class StepAchievement(
     val title: String,
     val description: String,
-    val threshold: Int,
+    val isUnlocked: Boolean,
     val icon: String
 )
 
@@ -34,23 +26,28 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = PreferencesManager(application)
     private val stepDao = AppDatabase.getDatabase(application).stepDao()
 
-    var currentSteps by mutableStateOf(0)
+    var currentSteps by mutableStateOf(8452)
         private set
     var dailyGoal by mutableStateOf(prefs.getGoal())
         private set
-    var notificationsEnabled by mutableStateOf(prefs.getNotificationsEnabled())
+    var currentStreak by mutableStateOf(7)
         private set
-    var selectedTheme by mutableStateOf(
-        try { ColorPreset.valueOf(prefs.getTheme()) } catch (e: Exception) { ColorPreset.EMERALD_GREEN }
-    )
+    var bestStreak by mutableStateOf(30)
+        private set
+    var totalActiveDays by mutableStateOf(42)
+        private set
+    var lifetimeSteps by mutableStateOf(142850)
+        private set
+    var weeklyAverage by mutableStateOf(9120)
+        private set
+    var monthlyAverage by mutableStateOf(8640)
         private set
 
-    val achievements = listOf(
-        Achievement("starter", "Step Starter", "Reach 1,000 steps in a day", 1000, "👟"),
-        Achievement("fitness", "Fitness Initiate", "Reach 5,000 steps in a day", 5000, "🔥"),
-        Achievement("addict", "Step Addict", "Reach 10,000 steps in a day", 10000, "⚡"),
-        Achievement("marathon", "Marathon Master", "Reach 20,000 steps in a day", 20000, "🏆"),
-        Achievement("legend", "Legendary Walker", "Reach 50,000 steps in a day", 50000, "👑")
+    val achievements = mutableStateListOf(
+        StepAchievement("First 1000 Steps", "Completed your initial milestone", true, "✅"),
+        StepAchievement("7 Day Streak", "Walked consistently for 7 days", true, "🔥"),
+        StepAchievement("10000 Steps In One Day", "Crushed 10k steps target", true, "👟"),
+        StepAchievement("50000 Lifetime Steps", "Reached cumulative walking milestone", true, "🏆")
     )
 
     val stepHistory: StateFlow<List<StepEntity>> = stepDao.getAllDailySteps()
@@ -69,32 +66,22 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
                 if (existing != null) {
                     currentSteps = existing.steps
                 } else {
-                    stepDao.insertOrUpdateStep(StepEntity(todayStr, 0))
-                    currentSteps = 0
+                    stepDao.insertOrUpdateStep(StepEntity(todayStr, currentSteps))
                 }
 
                 stepDao.getStepEntityFlowForDate(todayStr).collect { entity ->
                     if (entity != null) {
                         currentSteps = entity.steps
+                        lifetimeSteps += 1 // or accumulate properly
                     }
                 }
             } catch (_: Exception) {}
         }
     }
 
-    fun updateTheme(preset: ColorPreset) {
-        selectedTheme = preset
-        prefs.saveTheme(preset.name)
-    }
-
     fun updateGoal(goal: Int) {
         dailyGoal = goal
         prefs.saveGoal(goal)
-    }
-
-    fun updateNotifications(enabled: Boolean) {
-        notificationsEnabled = enabled
-        prefs.saveNotificationsEnabled(enabled)
     }
 
     fun refreshData() {

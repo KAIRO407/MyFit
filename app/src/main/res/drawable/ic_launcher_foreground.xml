@@ -4,25 +4,17 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Abstract dynamic running figure composed of smooth flowing ribbon shapes -->
-    <!-- Head -->
+    <!-- Futuristic Geometric Step Pulse / Crystal Apex (Cyan #00E5FF & Purple #7B61FF) -->
+    <!-- Left upward chevron wing -->
     <path
-        android:fillColor="#7CFAD8"
-        android:pathData="M58,26 A5,5 0,1,1 58,36 A5,5 0,1,1 58,26" />
-    <!-- Torso flowing ribbon (Neon Mint to Aqua Blue) -->
+        android:fillColor="#7B61FF"
+        android:pathData="M32,64 L54,36 L44,24 L16,60 Z" />
+    <!-- Right upward soaring apex / step shard -->
     <path
-        android:fillColor="#4FC3F7"
-        android:pathData="M55,38 C52,44 48,52 42,60 C38,65 32,70 26,74 L32,80 C38,75 44,70 50,63 C55,57 58,50 62,44 Z" />
-    <!-- Forward Leg / Motion ribbon (Aqua Blue to Electric Blue) -->
+        android:fillColor="#00E5FF"
+        android:pathData="M54,36 L76,64 L92,44 L64,20 Z" />
+    <!-- Center connecting diamond / core node -->
     <path
-        android:fillColor="#2979FF"
-        android:pathData="M50,63 C58,68 66,74 74,80 C78,83 82,86 86,88 L90,82 C85,78 80,74 74,70 C66,64 58,58 50,53 Z" />
-    <!-- Arm / Forward Motion ribbon -->
-    <path
-        android:fillColor="#7CFAD8"
-        android:pathData="M52,44 C60,42 68,40 76,38 L78,44 C70,46 62,48 55,51 Z" />
-    <!-- Trailing Motion ribbon -->
-    <path
-        android:fillColor="#4FC3F7"
-        android:pathData="M46,46 C40,52 32,58 24,62 L20,56 C28,51 36,45 42,40 Z" />
+        android:fillColor="#00FF94"
+        android:pathData="M54,48 L68,64 L54,84 L40,64 Z" />
 </vector>
