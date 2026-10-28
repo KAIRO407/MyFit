@@ -7,11 +7,14 @@ class PreferencesManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("MyFitPrefs", Context.MODE_PRIVATE)
 
     fun saveTheme(themeName: String) = prefs.edit().putString("key_theme", themeName).apply()
-    fun getTheme(): String = prefs.getString("key_theme", "EMERALD_GREEN") ?: "EMERALD_GREEN"
+    fun getTheme(): String = prefs.getString("key_theme", "CYAN_PULSE") ?: "CYAN_PULSE"
 
     fun saveGoal(goal: Int) = prefs.edit().putInt("key_goal", goal).apply()
     fun getGoal(): Int = prefs.getInt("key_goal", 10000)
 
-    fun saveNotificationsEnabled(enabled: Boolean) = prefs.edit().putBoolean("key_notifications", enabled).apply()
-    fun getNotificationsEnabled(): Boolean = prefs.getBoolean("key_notifications", true)
+    fun saveTransparency(alpha: Float) = prefs.edit().putFloat("key_alpha", alpha).apply()
+    fun getTransparency(): Float = prefs.getFloat("key_alpha", 0.15f)
+
+    fun saveUiStyle(style: String) = prefs.edit().putString("key_ui_style", style).apply()
+    fun getUiStyle(): String = prefs.getString("key_ui_style", "TRANSLUCENT") ?: "TRANSLUCENT"
 }

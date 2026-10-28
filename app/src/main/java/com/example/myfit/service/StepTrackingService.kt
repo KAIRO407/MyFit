@@ -17,12 +17,10 @@ import com.example.myfit.data.StepEntity
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.sqrt
 
 class StepTrackingService : Service(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private var stepCounterSensor: Sensor? = null
-    private var accelerometerSensor: Sensor? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     private val serviceJob = SupervisorJob()
@@ -32,12 +30,8 @@ class StepTrackingService : Service(), SensorEventListener {
     private var baselineSavedSteps = 0
     private var currentSteps = 0
     private var lastSavedSteps = 0
+    private var currentDateStr = ""
     private val channelId = "MyFitFitnessChannel"
-
-    private var lastStepCounterEventTime = 0L
-    private var lastMagnitude = 0.0f
-    private var lastStepTimestamp = 0L
-    private val minStepIntervalMs = 400L // 400ms between steps = max 150 steps/min
 
     override fun onCreate() {
         super.onCreate()
@@ -52,9 +46,10 @@ class StepTrackingService : Service(), SensorEventListener {
         } catch (_: Exception) {}
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        // Prioritize hardware step counter exclusively for stock-level precision matching Samsung Health / Google Fit
         stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-        accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
+        currentDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         loadTodayStepsAndRegisterSensors()
     }
 
@@ -80,9 +75,6 @@ class StepTrackingService : Service(), SensorEventListener {
                 stepCounterSensor?.let {
                     sensorManager.registerListener(this@StepTrackingService, it, SensorManager.SENSOR_DELAY_UI)
                 }
-                accelerometerSensor?.let {
-                    sensorManager.registerListener(this@StepTrackingService, it, SensorManager.SENSOR_DELAY_UI)
-                }
             }
         }
     }
@@ -100,40 +92,33 @@ class StepTrackingService : Service(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null) return
-        val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val currentTime = System.currentTimeMillis()
+        if (event.sensor.type != Sensor.TYPE_STEP_COUNTER) return
 
-        when (event.sensor.type) {
-            Sensor.TYPE_STEP_COUNTER -> {
-                lastStepCounterEventTime = currentTime
-                val totalBootSteps = event.values[0]
-                if (initialSensorSteps < 0f) {
-                    initialSensorSteps = totalBootSteps - baselineSavedSteps
-                }
-                val calculated = (totalBootSteps - initialSensorSteps).toInt()
-                if (calculated > currentSteps) {
-                    currentSteps = calculated.coerceAtLeast(baselineSavedSteps)
-                }
-            }
-            Sensor.TYPE_ACCELEROMETER -> {
-                // Only use accelerometer fallback if step counter sensor is silent (e.g. emulators or unsupported hardware)
-                if (currentTime - lastStepCounterEventTime > 4000L) {
-                    val x = event.values[0]
-                    val y = event.values[1]
-                    val z = event.values[2]
-                    val magnitude = sqrt((x * x + y * y + z * z).toDouble()).toFloat()
-                    
-                    val deltaMag = kotlin.math.abs(magnitude - lastMagnitude)
-                    lastMagnitude = magnitude
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
-                    if (deltaMag in 3.2f..8.0f) {
-                        if (currentTime - lastStepTimestamp >= minStepIntervalMs) {
-                            currentSteps += 1
-                            lastStepTimestamp = currentTime
-                        }
-                    }
-                }
+        // BULLETPROOF MIDNIGHT RESET CHECK
+        if (todayStr != currentDateStr) {
+            currentDateStr = todayStr
+            currentSteps = 0
+            baselineSavedSteps = 0
+            lastSavedSteps = 0
+            initialSensorSteps = -1f
+            serviceScope.launch {
+                try {
+                    val dao = AppDatabase.getDatabase(applicationContext).stepDao()
+                    dao.insertOrUpdateStep(StepEntity(todayStr, 0))
+                } catch (_: Exception) {}
             }
+        }
+
+        val totalBootSteps = event.values[0]
+        if (initialSensorSteps < 0f || totalBootSteps < initialSensorSteps) {
+            initialSensorSteps = totalBootSteps - baselineSavedSteps
+        }
+
+        val calculated = (totalBootSteps - initialSensorSteps).toInt()
+        if (calculated > currentSteps) {
+            currentSteps = calculated.coerceAtLeast(baselineSavedSteps)
         }
 
         if (kotlin.math.abs(currentSteps - lastSavedSteps) >= 1) {
@@ -141,7 +126,7 @@ class StepTrackingService : Service(), SensorEventListener {
             serviceScope.launch {
                 try {
                     val dao = AppDatabase.getDatabase(applicationContext).stepDao()
-                    dao.insertOrUpdateStep(StepEntity(dateStr, currentSteps))
+                    dao.insertOrUpdateStep(StepEntity(todayStr, currentSteps))
                 } catch (_: Exception) {}
             }
             updateNotification("Today's Steps: $currentSteps")
@@ -164,7 +149,7 @@ class StepTrackingService : Service(), SensorEventListener {
 
     private fun createNotification(text: String): Notification {
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("MyFit Fitness")
+            .setContentTitle("MyFit StepVerse")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
