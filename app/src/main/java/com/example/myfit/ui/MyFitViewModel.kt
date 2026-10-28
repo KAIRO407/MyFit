@@ -28,10 +28,10 @@ enum class UiStyle(val label: String) {
     OPAQUE("Opaque (Solid Dark)")
 }
 
-data class StepAchievement(
+data class RichAchievement(
     val title: String,
     val description: String,
-    val isUnlocked: Boolean,
+    val target: Int,
     val icon: String
 )
 
@@ -39,7 +39,7 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = PreferencesManager(application)
     private val stepDao = AppDatabase.getDatabase(application).stepDao()
 
-    var currentSteps by mutableStateOf(8452)
+    var currentSteps by mutableStateOf(0)
         private set
     var dailyGoal by mutableStateOf(prefs.getGoal())
         private set
@@ -53,48 +53,41 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
         try { StepVersePreset.valueOf(prefs.getTheme()) } catch (e: Exception) { StepVersePreset.CYAN_PULSE }
     )
         private set
-
-    // Level & XP System
-    var userLevel by mutableStateOf(10)
+    var unitKm by mutableStateOf(prefs.getUnitKm())
         private set
-    var levelTitle by mutableStateOf("Level 10 Adventurer")
+    var notificationsEnabled by mutableStateOf(prefs.getNotifications())
+        private set
+
+    var currentStreak by mutableStateOf(7)
+        private set
+    var bestStreak by mutableStateOf(30)
+        private set
+    var totalActiveDays by mutableStateOf(42)
+        private set
+    var userLevel by mutableStateOf(10)
         private set
     var currentXp by mutableStateOf(1850)
         private set
     var maxXp by mutableStateOf(2500)
         private set
-
-    // Streaks
-    var currentStreak by mutableStateOf(7)
-        private set
-    var bestStreak by mutableStateOf(30)
-        private set
-    var activeDays by mutableStateOf(42)
-        private set
-
-    // Statistics
     var lifetimeSteps by mutableStateOf(142850)
         private set
     var weeklyAverage by mutableStateOf(9120)
         private set
     var monthlyAverage by mutableStateOf(8640)
         private set
-    var yearlyAverage by mutableStateOf(8400)
-        private set
 
-    // Settings
-    var unitKm by mutableStateOf(true)
-        private set
-    var notificationsEnabled by mutableStateOf(true)
-        private set
-
-    val achievements = mutableStateListOf(
-        StepAchievement("First 1000 Steps", "Completed your initial milestone", true, "🏆"),
-        StepAchievement("First 5000 Steps", "Walked 5,000 steps in a day", true, "🏆"),
-        StepAchievement("First 10000 Steps", "Crushed the 10k daily step target", true, "🏆"),
-        StepAchievement("7 Day Streak", "Walked consistently for 7 days", true, "🔥"),
-        StepAchievement("50000 Lifetime Steps", "Reached cumulative walking milestone", true, "👑"),
-        StepAchievement("1 Million Steps", "Elite multi-million step club", false, "⭐")
+    val richAchievements = listOf(
+        RichAchievement("First Step", "Take your very first tracked step", 1, "👟"),
+        RichAchievement("Century Walk", "Reach 100 steps in a day", 100, "🎯"),
+        RichAchievement("Walking Enthusiast", "Reach 5,000 steps in a day", 5000, "⚡"),
+        RichAchievement("10k Master", "Crush the 10,000 daily step target", 10000, "🔥"),
+        RichAchievement("Half Marathon", "Walk 21,000 steps in a single day", 21000, "🏃"),
+        RichAchievement("Marathon Walker", "Walk 42,000 steps in a single day", 42000, "🏅"),
+        RichAchievement("7 Day Streak", "Maintain a 7-day walking streak", 7, "🔥"),
+        RichAchievement("30 Day Streak", "Maintain a 30-day walking streak", 30, "👑"),
+        RichAchievement("Century Club", "Accumulate 100,000 lifetime steps", 100000, "⭐"),
+        RichAchievement("Millionaire Walker", "Accumulate 1,000,000 lifetime steps", 1000000, "💎")
     )
 
     val stepHistory: StateFlow<List<StepEntity>> = stepDao.getAllDailySteps()
@@ -120,20 +113,6 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
                 stepDao.getStepEntityFlowForDate(todayStr).collect { entity ->
                     if (entity != null) {
                         currentSteps = entity.steps
-                        currentXp += 5
-                        if (currentXp >= maxXp) {
-                            currentXp -= maxXp
-                            userLevel += 1
-                            levelTitle = when {
-                                userLevel >= 100 -> "Level 100 Master Walker"
-                                userLevel >= 50 -> "Level 50 Legend"
-                                userLevel >= 25 -> "Level 25 Pathfinder"
-                                userLevel >= 10 -> "Level 10 Adventurer"
-                                userLevel >= 5 -> "Level 5 Explorer"
-                                else -> "Level 1 Walker"
-                            }
-                            maxXp += 600
-                        }
                     }
                 }
             } catch (_: Exception) {}
@@ -162,10 +141,12 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleUnits(isKm: Boolean) {
         unitKm = isKm
+        prefs.saveUnitKm(isKm)
     }
 
     fun toggleNotifications(enabled: Boolean) {
         notificationsEnabled = enabled
+        prefs.saveNotifications(enabled)
     }
 
     fun refreshData() {

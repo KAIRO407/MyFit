@@ -17,4 +17,10 @@ class PreferencesManager(context: Context) {
 
     fun saveUiStyle(style: String) = prefs.edit().putString("key_ui_style", style).apply()
     fun getUiStyle(): String = prefs.getString("key_ui_style", "TRANSLUCENT") ?: "TRANSLUCENT"
+
+    fun saveUnitKm(isKm: Boolean) = prefs.edit().putBoolean("key_unit_km", isKm).apply()
+    fun getUnitKm(): Boolean = prefs.getBoolean("key_unit_km", true)
+
+    fun saveNotifications(enabled: Boolean) = prefs.edit().putBoolean("key_notif", enabled).apply()
+    fun getNotifications(): Boolean = prefs.getBoolean("key_notif", true)
 }
