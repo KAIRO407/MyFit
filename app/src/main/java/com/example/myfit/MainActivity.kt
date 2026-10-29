@@ -7,12 +7,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,7 +25,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +36,7 @@ import com.example.myfit.ui.MyFitViewModel
 import com.example.myfit.ui.RequestActivityPermission
 import com.example.myfit.ui.StepVersePreset
 import com.example.myfit.ui.UiStyle
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -78,12 +81,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MyFitStepVerseApp(viewModel: MyFitViewModel) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Home, 1: Statistics, 2: Achievements, 3: Profile
+    val pagerState = rememberPagerState(pageCount = { 4 }) // 0: Home, 1: Stats, 2: Achievements, 3: Profile
+    val coroutineScope = rememberCoroutineScope()
     var showSettings by remember { mutableStateOf(false) }
 
     val primaryColor = viewModel.selectedTheme.primary
+    val accentColor = viewModel.selectedTheme.accent
     val progress = if (viewModel.dailyGoal > 0) {
         (viewModel.currentSteps.toFloat() / viewModel.dailyGoal.toFloat()).coerceIn(0f, 1f)
     } else 0f
@@ -105,7 +111,7 @@ fun MyFitStepVerseApp(viewModel: MyFitViewModel) {
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // APP HEADER: MyFit & Tagline + Settings Gear
+                // APP HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -131,7 +137,7 @@ fun MyFitStepVerseApp(viewModel: MyFitViewModel) {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Color(0xFF151515))
-                                .border(1.dp, primaryColor.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                .border(1.dp, primaryColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -162,24 +168,39 @@ fun MyFitStepVerseApp(viewModel: MyFitViewModel) {
                     // SETTINGS & CUSTOMIZATION SCREEN
                     SettingsScreen(viewModel = viewModel)
                 } else {
-                    // TAB ROUTER
-                    when (selectedTab) {
-                        0 -> HomeScreen(viewModel = viewModel, progress = progress)
-                        1 -> StatisticsScreen(viewModel = viewModel)
-                        2 -> RichAchievementsScreen(viewModel = viewModel)
-                        3 -> ProfileScreen(viewModel = viewModel)
+                    // SWIPEABLE HORIZONTAL PAGER
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) { page ->
+                        when (page) {
+                            0 -> HomeScreen(viewModel = viewModel, progress = progress)
+                            1 -> StatisticsScreen(viewModel = viewModel)
+                            2 -> RichAchievementsScreen(viewModel = viewModel)
+                            3 -> ProfileScreen(viewModel = viewModel)
+                        }
                     }
                 }
             }
 
-            // BOTTOM NAVIGATION (Glowing Active Tab)
+            // BOTTOM NAVIGATION
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (!showSettings) {
-                    BottomNavBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it }, primaryColor = primaryColor)
+                    BottomNavBar(
+                        selectedTab = pagerState.currentPage,
+                        onTabSelected = { tab ->
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(tab)
+                            }
+                        },
+                        primaryColor = primaryColor
+                    )
                 }
                 Text(text = "MyFit • by Sujal", color = Color(0xFFA0A0A0), fontSize = 10.sp)
             }
@@ -203,7 +224,6 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            // Large Circular Step Counter Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
@@ -262,7 +282,6 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
         }
 
         item {
-            // Daily Progress Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
@@ -279,7 +298,7 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(text = "Goal: %,d Steps".format(viewModel.dailyGoal), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "${(progress * 100).toInt()}% Completed", color = Color(0xFF00FF94), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "${(progress * 100).toInt()}% Completed", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     LinearProgressIndicator(
                         progress = progress,
@@ -287,7 +306,7 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = Color(0xFF00FF94),
+                        color = primaryColor,
                         trackColor = Color(0xFF202020)
                     )
                 }
@@ -295,7 +314,6 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
         }
 
         item {
-            // Daily Streak System
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
@@ -379,7 +397,7 @@ fun StatCard(label: String, value: String, primaryColor: Color, modifier: Modifi
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(text = label, color = Color(0xFFA0A0A0), fontSize = 11.sp)
-            Text(text = value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(text = value, color = primaryColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -428,12 +446,12 @@ fun RichAchievementsScreen(viewModel: MyFitViewModel) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isUnlocked) Color(0xFF00FF94).copy(alpha = 0.15f) else Color(0xFF202020))
+                                .background(primaryColor.copy(alpha = 0.2f))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = if (isUnlocked) "UNLOCKED" else "${(progress * 100).toInt()}%",
-                                color = if (isUnlocked) Color(0xFF00FF94) else Color(0xFFA0A0A0),
+                                color = if (isUnlocked) primaryColor else Color(0xFFA0A0A0),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -495,10 +513,10 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF7B61FF).copy(alpha = 0.2f))
+                            .background(primaryColor.copy(alpha = 0.2f))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text(text = "Level ${viewModel.userLevel}", color = Color(0xFF7B61FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Level 1 Walker", color = primaryColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -516,11 +534,11 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    ProfileRow("Current Goal", "%,d Steps".format(viewModel.dailyGoal))
-                    ProfileRow("Lifetime Steps", "%,d".format(viewModel.lifetimeSteps))
-                    ProfileRow("Longest Streak", "${viewModel.bestStreak} Days")
-                    ProfileRow("Distance Walked", String.format(Locale.getDefault(), "%.1f km", distanceKm))
-                    ProfileRow("Achievements Earned", "$unlockedCount / ${viewModel.richAchievements.size}")
+                    ProfileRow("Current Goal", "%,d Steps".format(viewModel.dailyGoal), primaryColor)
+                    ProfileRow("Lifetime Steps", "%,d".format(viewModel.lifetimeSteps), primaryColor)
+                    ProfileRow("Longest Streak", "${viewModel.bestStreak} Days", primaryColor)
+                    ProfileRow("Distance Walked", String.format(Locale.getDefault(), "%.1f km", distanceKm), primaryColor)
+                    ProfileRow("Achievements Earned", "$unlockedCount / ${viewModel.richAchievements.size}", primaryColor)
                 }
             }
         }
@@ -531,7 +549,6 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
 @Composable
 fun SettingsScreen(viewModel: MyFitViewModel) {
     val theme = viewModel.selectedTheme
-    val uiStyle = viewModel.selectedUiStyle
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -539,7 +556,7 @@ fun SettingsScreen(viewModel: MyFitViewModel) {
     ) {
         item {
             Text(text = "Settings & Customization", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(text = "Personalize your MyFit experience.", color = Color(0xFFA0A0A0), fontSize = 12.sp)
+            Text(text = "Personalize your MyFit experience with rich theme options.", color = Color(0xFFA0A0A0), fontSize = 12.sp)
         }
 
         item {
@@ -552,34 +569,49 @@ fun SettingsScreen(viewModel: MyFitViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = "Dashboard Colors", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        StepVersePreset.entries.forEach { preset ->
-                            val isSelected = theme == preset
-                            Box(
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(preset.primary)
-                                    .border(
-                                        2.dp,
-                                        if (isSelected) Color.White else Color.Transparent,
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable { viewModel.updateTheme(preset) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isSelected) {
+                    Text(text = "Expanded Theme & Accent Colors", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    
+                    val rows = StepVersePreset.entries.chunked(4)
+                    rows.forEach { rowPresets ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            rowPresets.forEach { preset ->
+                                val isSelected = theme == preset
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable { viewModel.updateTheme(preset) }
+                                ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(12.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White)
+                                            .size(50.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(preset.primary)
+                                            .border(
+                                                2.5.dp,
+                                                if (isSelected) Color.White else Color.Transparent,
+                                                RoundedCornerShape(14.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(12.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.White)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = preset.label.split(" ")[0],
+                                        color = if (isSelected) Color.White else Color(0xFFA0A0A0),
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
                             }
@@ -664,13 +696,13 @@ fun SettingsScreen(viewModel: MyFitViewModel) {
 }
 
 @Composable
-fun ProfileRow(label: String, value: String) {
+fun ProfileRow(label: String, value: String, primaryColor: Color) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = label, color = Color(0xFFA0A0A0), fontSize = 13.sp)
-        Text(text = value, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(text = value, color = primaryColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 

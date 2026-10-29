@@ -19,7 +19,11 @@ enum class StepVersePreset(val primary: Color, val accent: Color, val label: Str
     CYAN_PULSE(Color(0xFF00E5FF), Color(0xFF7B61FF), "Cyan Pulse"),
     VIBRANT_PURPLE(Color(0xFF7B61FF), Color(0xFF00E5FF), "Vibrant Purple"),
     EMERALD_GLOW(Color(0xFF00FF94), Color(0xFF00E5FF), "Emerald Glow"),
-    SOLAR_GOLD(Color(0xFFFFD700), Color(0xFFFFB800), "Solar Gold")
+    SOLAR_GOLD(Color(0xFFFFD700), Color(0xFFFFB800), "Solar Gold"),
+    CRIMSON_FIRE(Color(0xFFFF1744), Color(0xFFFF5252), "Crimson Fire"),
+    SUNSET_ORANGE(Color(0xFFFF5722), Color(0xFFFF9800), "Sunset Orange"),
+    ELECTRIC_VIOLET(Color(0xFF9C27B0), Color(0xFFE040FB), "Electric Violet"),
+    MIDNIGHT_BLUE(Color(0xFF2979FF), Color(0xFF00B0FF), "Midnight Blue")
 }
 
 enum class UiStyle(val label: String) {
@@ -58,23 +62,17 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
     var notificationsEnabled by mutableStateOf(prefs.getNotifications())
         private set
 
-    var currentStreak by mutableStateOf(7)
+    var lifetimeSteps by mutableStateOf(0)
         private set
-    var bestStreak by mutableStateOf(30)
+    var weeklyAverage by mutableStateOf(0)
         private set
-    var totalActiveDays by mutableStateOf(42)
+    var monthlyAverage by mutableStateOf(0)
         private set
-    var userLevel by mutableStateOf(10)
+    var currentStreak by mutableStateOf(0)
         private set
-    var currentXp by mutableStateOf(1850)
+    var bestStreak by mutableStateOf(0)
         private set
-    var maxXp by mutableStateOf(2500)
-        private set
-    var lifetimeSteps by mutableStateOf(142850)
-        private set
-    var weeklyAverage by mutableStateOf(9120)
-        private set
-    var monthlyAverage by mutableStateOf(8640)
+    var userLevel by mutableStateOf(1)
         private set
 
     val richAchievements = listOf(
@@ -94,10 +92,10 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        observeTodaySteps()
+        observeTodayStepsAndHistory()
     }
 
-    private fun observeTodaySteps() {
+    private fun observeTodayStepsAndHistory() {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val todayStr = dateFormat.format(Date())
         viewModelScope.launch {
@@ -116,6 +114,36 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (_: Exception) {}
+        }
+
+        viewModelScope.launch {
+            stepDao.getAllDailySteps().collect { history ->
+                if (history.isNotEmpty()) {
+                    val total = history.sumOf { it.steps }
+                    lifetimeSteps = total
+                    weeklyAverage = total / history.size
+                    monthlyAverage = weeklyAverage
+
+                    var streak = 0
+                    var best = 0
+                    for (item in history) {
+                        if (item.steps > 0) {
+                            streak++
+                            if (streak > best) best = streak
+                        } else {
+                            streak = 0
+                        }
+                    }
+                    currentStreak = streak.coerceAtLeast(if (currentSteps > 0) 1 else 0)
+                    bestStreak = best.coerceAtLeast(currentStreak)
+                } else {
+                    lifetimeSteps = currentSteps
+                    weeklyAverage = currentSteps
+                    monthlyAverage = currentSteps
+                    currentStreak = if (currentSteps > 0) 1 else 0
+                    bestStreak = currentStreak
+                }
+            }
         }
     }
 
@@ -150,6 +178,6 @@ class MyFitViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshData() {
-        observeTodaySteps()
+        observeTodayStepsAndHistory()
     }
 }

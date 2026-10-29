@@ -19,7 +19,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class StepTrackingService : Service(), SensorEventListener {
-    private lateinit var sensorManager: SensorManager
+    private var sensorManager: SensorManager? = null
     private var stepCounterSensor: Sensor? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -33,10 +33,17 @@ class StepTrackingService : Service(), SensorEventListener {
     private var currentDateStr = ""
     private val channelId = "MyFitFitnessChannel"
 
+    private var lastValidStepTime = 0L
+    private val minStepIntervalMs = 380L
+
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        startForeground(1, createNotification("MyFit step tracking active"))
+        try {
+            createNotificationChannel()
+            startForeground(1, createNotification("MyFit step tracking active"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         try {
             val powerManager = getSystemService(POWER_SERVICE) as PowerManager
@@ -45,9 +52,10 @@ class StepTrackingService : Service(), SensorEventListener {
             }
         } catch (_: Exception) {}
 
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        // Prioritize hardware step counter exclusively for stock-level precision matching Samsung Health / Google Fit
-        stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        try {
+            sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+            stepCounterSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        } catch (_: Exception) {}
 
         currentDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         loadTodayStepsAndRegisterSensors()
@@ -72,9 +80,11 @@ class StepTrackingService : Service(), SensorEventListener {
             } catch (_: Exception) {}
 
             withContext(Dispatchers.Main) {
-                stepCounterSensor?.let {
-                    sensorManager.registerListener(this@StepTrackingService, it, SensorManager.SENSOR_DELAY_UI)
-                }
+                try {
+                    stepCounterSensor?.let { sensor ->
+                        sensorManager?.registerListener(this@StepTrackingService, sensor, SensorManager.SENSOR_DELAY_UI)
+                    }
+                } catch (_: Exception) {}
             }
         }
     }
@@ -95,8 +105,8 @@ class StepTrackingService : Service(), SensorEventListener {
         if (event.sensor.type != Sensor.TYPE_STEP_COUNTER) return
 
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val currentTime = System.currentTimeMillis()
 
-        // BULLETPROOF MIDNIGHT RESET CHECK
         if (todayStr != currentDateStr) {
             currentDateStr = todayStr
             currentSteps = 0
@@ -118,7 +128,15 @@ class StepTrackingService : Service(), SensorEventListener {
 
         val calculated = (totalBootSteps - initialSensorSteps).toInt()
         if (calculated > currentSteps) {
-            currentSteps = calculated.coerceAtLeast(baselineSavedSteps)
+            val stepDelta = calculated - currentSteps
+            if (stepDelta > 0) {
+                if (currentTime - lastValidStepTime >= minStepIntervalMs || stepDelta == 1) {
+                    currentSteps = calculated.coerceAtLeast(baselineSavedSteps)
+                    lastValidStepTime = currentTime
+                } else {
+                    initialSensorSteps += stepDelta
+                }
+            }
         }
 
         if (kotlin.math.abs(currentSteps - lastSavedSteps) >= 1) {
@@ -136,15 +154,17 @@ class StepTrackingService : Service(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            channelId,
-            "MyFit Step Counter Service",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Runs background step tracking for MyFit"
-        }
-        val manager = getSystemService(NotificationManager::class.java)
-        manager?.createNotificationChannel(channel)
+        try {
+            val channel = NotificationChannel(
+                channelId,
+                "MyFit Step Counter Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Runs background step tracking for MyFit"
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        } catch (_: Exception) {}
     }
 
     private fun createNotification(text: String): Notification {
@@ -166,7 +186,7 @@ class StepTrackingService : Service(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         try {
-            sensorManager.unregisterListener(this)
+            sensorManager?.unregisterListener(this)
             wakeLock?.let {
                 if (it.isHeld) it.release()
             }
