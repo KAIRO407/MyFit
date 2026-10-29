@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -89,7 +91,6 @@ fun MyFitStepVerseApp(viewModel: MyFitViewModel) {
     var showSettings by remember { mutableStateOf(false) }
 
     val primaryColor = viewModel.selectedTheme.primary
-    val accentColor = viewModel.selectedTheme.accent
     val progress = if (viewModel.dailyGoal > 0) {
         (viewModel.currentSteps.toFloat() / viewModel.dailyGoal.toFloat()).coerceIn(0f, 1f)
     } else 0f
@@ -217,7 +218,7 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
     val mins = activeMinutes % 60
     val timeActiveStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
     val distanceKm = viewModel.currentSteps * 0.76 / 1000.0
-    val distanceStr = if (viewModel.unitKm) String.format(Locale.getDefault(), "%.1f km", distanceKm) else String.format(Locale.getDefault(), "%.1f mi", distanceKm * 0.621371)
+    val distanceStr = String.format(Locale.getDefault(), "%.1f km", distanceKm)
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -298,7 +299,7 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(text = "Goal: %,d Steps".format(viewModel.dailyGoal), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "${(progress * 100).toInt()}% Completed", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "${(progress * 100).toInt()}% Completed", color = Color(0xFF00FF94), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     LinearProgressIndicator(
                         progress = progress,
@@ -306,7 +307,7 @@ fun HomeScreen(viewModel: MyFitViewModel, progress: Float) {
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = primaryColor,
+                        color = Color(0xFF00FF94),
                         trackColor = Color(0xFF202020)
                     )
                 }
@@ -417,8 +418,17 @@ fun RichAchievementsScreen(viewModel: MyFitViewModel) {
         }
 
         items(viewModel.richAchievements) { ach ->
-            val isUnlocked = viewModel.currentSteps >= ach.target || viewModel.lifetimeSteps >= ach.target || (ach.target <= 30 && viewModel.currentStreak >= ach.target)
-            val progress = (viewModel.currentSteps.toFloat() / ach.target.toFloat()).coerceIn(0f, 1f)
+            val isUnlocked = when (ach.type) {
+                "steps" -> viewModel.currentSteps >= ach.target || viewModel.lifetimeSteps >= ach.target
+                "streak" -> viewModel.currentStreak >= ach.target || viewModel.bestStreak >= ach.target
+                "lifetime" -> viewModel.lifetimeSteps >= ach.target
+                else -> viewModel.currentSteps >= ach.target
+            }
+            val progress = when (ach.type) {
+                "streak" -> (viewModel.currentStreak.toFloat() / ach.target.toFloat()).coerceIn(0f, 1f)
+                "lifetime" -> (viewModel.lifetimeSteps.toFloat() / ach.target.toFloat()).coerceIn(0f, 1f)
+                else -> (viewModel.currentSteps.toFloat() / ach.target.toFloat()).coerceIn(0f, 1f)
+            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -475,48 +485,142 @@ fun RichAchievementsScreen(viewModel: MyFitViewModel) {
     }
 }
 
-// PROFILE SCREEN
+// PROFILE SCREEN WITH LOCAL ACCOUNT SYSTEM
 @Composable
 fun ProfileScreen(viewModel: MyFitViewModel) {
     val primaryColor = viewModel.selectedTheme.primary
     val distanceKm = viewModel.lifetimeSteps * 0.76 / 1000.0
-    val unlockedCount = viewModel.richAchievements.count { viewModel.currentSteps >= it.target || viewModel.lifetimeSteps >= it.target }
+    val unlockedCount = viewModel.richAchievements.count {
+        when (it.type) {
+            "steps" -> viewModel.currentSteps >= it.target || viewModel.lifetimeSteps >= it.target
+            "streak" -> viewModel.currentStreak >= it.target || viewModel.bestStreak >= it.target
+            "lifetime" -> viewModel.lifetimeSteps >= it.target
+            else -> viewModel.currentSteps >= it.target
+        }
+    }
+
+    var usernameInput by remember { mutableStateOf("") }
+    var selectedAvatar by remember { mutableStateOf("🦊") }
+    val avatars = listOf("👤", "🦊", "🦁", "🦄", "🤖", "🧙‍♂️", "⚡", "🚀")
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        val account = viewModel.userAccount
+        if (account == null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .background(primaryColor.copy(alpha = 0.2f))
-                            .border(1.5.dp, primaryColor, CircleShape),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Text(text = "👤", fontSize = 28.sp)
+                        Text(text = "Create Local Account", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Save your step progress and profile locally on your device.", color = Color(0xFFA0A0A0), fontSize = 12.sp, textAlign = TextAlign.Center)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            avatars.forEach { av ->
+                                val isSelected = selectedAvatar == av
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) primaryColor.copy(alpha = 0.3f) else Color(0xFF202020))
+                                        .border(1.5.dp, if (isSelected) primaryColor else Color.Transparent, CircleShape)
+                                        .clickable { selectedAvatar = av },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = av, fontSize = 20.sp)
+                                }
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = usernameInput,
+                            onValueChange = { usernameInput = it },
+                            label = { Text("Enter Your Name") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryColor,
+                                unfocusedBorderColor = Color(0xFF303030),
+                                focusedLabelColor = primaryColor,
+                                unfocusedLabelColor = Color(0xFFA0A0A0),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Button(
+                            onClick = {
+                                if (usernameInput.isNotBlank()) {
+                                    viewModel.createAccount(usernameInput.trim(), selectedAvatar)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = usernameInput.isNotBlank()
+                        ) {
+                            Text(text = "Create Account", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
                     }
-                    Text(text = "Sujal", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Box(
+                }
+            }
+        } else {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Column(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(primaryColor.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(text = "Level 1 Walker", color = primaryColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(primaryColor.copy(alpha = 0.2f))
+                                .border(2.dp, primaryColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = account.avatar, fontSize = 32.sp)
+                        }
+                        Text(text = account.username, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF7B61FF).copy(alpha = 0.2f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(text = "Local Explorer • Coins: ${account.coins}", color = Color(0xFF7B61FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        OutlinedButton(
+                            onClick = { viewModel.signOutAccount() },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
+                            border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(text = "Sign Out / Reset Account", fontSize = 11.sp)
+                        }
                     }
                 }
             }
@@ -534,11 +638,11 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    ProfileRow("Current Goal", "%,d Steps".format(viewModel.dailyGoal), primaryColor)
-                    ProfileRow("Lifetime Steps", "%,d".format(viewModel.lifetimeSteps), primaryColor)
-                    ProfileRow("Longest Streak", "${viewModel.bestStreak} Days", primaryColor)
-                    ProfileRow("Distance Walked", String.format(Locale.getDefault(), "%.1f km", distanceKm), primaryColor)
-                    ProfileRow("Achievements Earned", "$unlockedCount / ${viewModel.richAchievements.size}", primaryColor)
+                    ProfileRow("Current Goal", "%,d Steps".format(viewModel.dailyGoal))
+                    ProfileRow("Lifetime Steps", "%,d".format(viewModel.lifetimeSteps))
+                    ProfileRow("Longest Streak", "${viewModel.bestStreak} Days")
+                    ProfileRow("Distance Walked", String.format(Locale.getDefault(), "%.1f km", distanceKm))
+                    ProfileRow("Achievements Earned", "$unlockedCount / ${viewModel.richAchievements.size}")
                 }
             }
         }
@@ -654,55 +758,17 @@ fun SettingsScreen(viewModel: MyFitViewModel) {
                 }
             }
         }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(text = "Distance Units", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = { viewModel.toggleUnits(true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (viewModel.unitKm) theme.primary else Color(0xFF202020)),
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text(text = "Kilometers (KM)", color = if (viewModel.unitKm) Color.Black else Color.White, fontWeight = FontWeight.Bold)
-                        }
-                        Button(
-                            onClick = { viewModel.toggleUnits(false) },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (!viewModel.unitKm) theme.primary else Color(0xFF202020)),
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text(text = "Miles", color = if (!viewModel.unitKm) Color.Black else Color.White, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
 @Composable
-fun ProfileRow(label: String, value: String, primaryColor: Color) {
+fun ProfileRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = label, color = Color(0xFFA0A0A0), fontSize = 13.sp)
-        Text(text = value, color = primaryColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(text = value, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
