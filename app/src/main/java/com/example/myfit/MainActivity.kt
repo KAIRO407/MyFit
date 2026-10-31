@@ -485,7 +485,7 @@ fun RichAchievementsScreen(viewModel: MyFitViewModel) {
     }
 }
 
-// PROFILE SCREEN WITH LOCAL ACCOUNT SYSTEM
+// PROFILE SCREEN WITH LOCAL ACCOUNT SYSTEM & DELETION CONFIRMATION DIALOG
 @Composable
 fun ProfileScreen(viewModel: MyFitViewModel) {
     val primaryColor = viewModel.selectedTheme.primary
@@ -501,7 +501,8 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
 
     var usernameInput by remember { mutableStateOf("") }
     var selectedAvatar by remember { mutableStateOf("🦊") }
-    val avatars = listOf("👤", "🦊", "🦁", "🦄", "🤖", "🧙‍♂️", "⚡", "🚀")
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    val avatars = listOf("👤", "🦊", "🦁", "🦄", "🤖", "🧙‍♂️", "⚡", "🚀", "🐅", "🐉", "🦅", "💎")
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -525,22 +526,24 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
                         Text(text = "Create Local Account", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Text(text = "Save your step progress and profile locally on your device.", color = Color(0xFFA0A0A0), fontSize = 12.sp, textAlign = TextAlign.Center)
 
-                        Row(
+                        Text(text = "Choose Your Avatar", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        androidx.compose.foundation.lazy.LazyRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
-                            avatars.forEach { av ->
+                            items(avatars) { av ->
                                 val isSelected = selectedAvatar == av
                                 Box(
                                     modifier = Modifier
-                                        .size(40.dp)
+                                        .size(46.dp)
                                         .clip(CircleShape)
                                         .background(if (isSelected) primaryColor.copy(alpha = 0.3f) else Color(0xFF202020))
-                                        .border(1.5.dp, if (isSelected) primaryColor else Color.Transparent, CircleShape)
+                                        .border(2.dp, if (isSelected) primaryColor else Color.Transparent, CircleShape)
                                         .clickable { selectedAvatar = av },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = av, fontSize = 20.sp)
+                                    Text(text = av, fontSize = 22.sp)
                                 }
                             }
                         }
@@ -614,12 +617,12 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
                         Spacer(modifier = Modifier.height(6.dp))
 
                         OutlinedButton(
-                            onClick = { viewModel.signOutAccount() },
+                            onClick = { showDeleteConfirmDialog = true },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
                             border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.5f)),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text(text = "Sign Out / Reset Account", fontSize = 11.sp)
+                            Text(text = "Delete Account", fontSize = 11.sp)
                         }
                     }
                 }
@@ -646,6 +649,33 @@ fun ProfileScreen(viewModel: MyFitViewModel) {
                 }
             }
         }
+    }
+
+    // Account Deletion Verification Dialog
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Local Account?", color = Color.White) },
+            text = { Text("Are you sure you want to delete your local account? All saved profile data on this device will be permanently removed.", color = Color(0xFFA0A0A0)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        viewModel.signOutAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
+                ) {
+                    Text("Yes, Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel", color = Color(0xFFA0A0A0))
+                }
+            },
+            containerColor = Color(0xFF1A1A1A),
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }
 
